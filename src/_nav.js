@@ -129,7 +129,7 @@ const _nav = [
       },
       {
         component: CNavItem,
-        name: 'Scheduled Alerts',
+        name: 'Alerts Configuration',
         to: '/tenant/administration/alertsqueue',
       },
       {
@@ -158,6 +158,11 @@ const _nav = [
       },
       {
         component: CNavItem,
+        name: 'Geo IP Lookup',
+        to: '/tenant/tools/geoiplookup',
+      },
+      {
+        component: CNavItem,
         name: 'Tenant Lookup',
         to: '/tenant/administration/tenantlookup',
       },
@@ -165,6 +170,11 @@ const _nav = [
         component: CNavItem,
         name: 'Individual Domain Check',
         to: '/tenant/standards/individual-domains',
+      },
+      {
+        component: CNavItem,
+        name: 'BPA Report Builder',
+        to: '/tenant/tools/bpa-report-builder',
       },
     ],
   },
@@ -650,19 +660,29 @@ const _nav = [
     items: [
       {
         component: CNavItem,
-        name: 'Settings',
+        name: 'Application Settings',
         to: '/cipp/settings',
       },
       {
         component: CNavItem,
-        name: 'SAM Setup Wizard',
-        to: '/cipp/setup',
+        name: 'User Settings',
+        to: '/cipp/user-settings',
       },
       {
         component: CNavItem,
-        name: 'Documentation',
-        href: 'https://cipp.app',
-        target: '_blank',
+        name: 'Scheduler',
+        to: '/cipp/scheduler',
+      },
+      {
+        component: CNavItem,
+        name: 'Logbook',
+        to: '/cipp/logs',
+      },
+
+      {
+        component: CNavItem,
+        name: 'SAM Setup Wizard',
+        to: '/cipp/setup',
       },
     ],
   },

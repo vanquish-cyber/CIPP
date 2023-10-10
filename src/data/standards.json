@@ -79,6 +79,13 @@
     "label": "Disable Basic Authentication"
   },
   {
+    "name": "standards.DisableBasicAuthSMTP",
+    "cat": "Global",
+    "helpText": "",
+    "addedComponent": null,
+    "label": "Disable SMTP Basic Authentication"
+  },
+  {
     "name": "standards.laps",
     "cat": "AAD",
     "helpText": "Enables the tenant to use LAPS",
@@ -179,6 +186,12 @@
       "label": "Allowed application IDs, comma separated"
     },
     "label": "Require admin consent for applications (Prevent OAuth phishing.)"
+  },
+  {
+    "cat": "AAD",
+    "name": "standards.OauthConsentLowSec",
+    "helpText": "",
+    "label": "Allow users to consent to applications with low security risk (Prevent OAuth phishing. Lower impact, less secure.)"
   },
   {
     "cat": "AAD",
