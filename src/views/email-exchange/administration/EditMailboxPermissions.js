@@ -859,7 +859,7 @@ const OutOfOffice = () => {
                     return (
                       <CForm onSubmit={handleSubmit}>
                         <CRow>
-                          <CCol className="mb-3">
+                          <CCol>
                             <RFFCFormSwitch name="AutoReplyState" label="Auto Reply State" />
                           </CCol>
                         </CRow>
@@ -888,7 +888,7 @@ const OutOfOffice = () => {
                           </CCol>
                         </CRow>
                         <CRow>
-                          <CCol className="mb-3">
+                          <CCol>
                             <RFFCFormInput
                               type="text"
                               name="InternalMessage"
@@ -898,7 +898,7 @@ const OutOfOffice = () => {
                           </CCol>
                         </CRow>
                         <CRow>
-                          <CCol className="mb-3">
+                          <CCol>
                             <RFFCFormInput
                               type="text"
                               name="ExternalMessage"
@@ -959,6 +959,7 @@ const OutOfOfficeSettings = () => {
     path: '/api/ListOoO',
     params: { userId, tenantFilter },
   })
+  const combinedRegex = /(<([^>]+)>)|&#65279;|&nbsp;/gi
   const content = [
     {
       heading: 'Auto Reply State',
@@ -974,11 +975,11 @@ const OutOfOfficeSettings = () => {
     },
     {
       heading: 'Internal Message',
-      body: details?.InternalMessage ? details?.InternalMessage : 'N/A',
+      body: details?.InternalMessage ? details?.InternalMessage.replace(combinedRegex, '') : 'N/A',
     },
     {
       heading: 'External Message',
-      body: details?.ExternalMessage ? details?.ExternalMessage : 'N/A',
+      body: details?.ExternalMessage ? details?.ExternalMessage.replace(combinedRegex, '') : 'N/A',
     },
   ]
   return (
