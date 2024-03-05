@@ -37,6 +37,7 @@ import { debounce, update } from 'lodash-es'
 import { useSearchParams } from 'react-router-dom'
 import CopyToClipboard from 'react-copy-to-clipboard'
 import { setDefaultColumns } from 'src/store/features/app'
+import { end } from '@popperjs/core'
 
 const FilterComponent = ({ filterText, onFilter, onClear, filterlist, onFilterPreset }) => (
   <>
@@ -122,6 +123,7 @@ export default function CippTable({
   exportFiltered = false,
   filterlist,
   showFilter = true,
+  endpointName,
   tableProps: {
     keyField = 'id',
     theme = 'cyberdrain',
@@ -146,7 +148,7 @@ export default function CippTable({
 }) {
   const inputRef = useRef('')
   const [loopRunning, setLoopRunning] = React.useState(false)
-  const defaultColumns = useSelector((state) => state.app.defaultColumns[reportName])
+  const defaultColumns = useSelector((state) => state.app.defaultColumns[endpointName])
   const [defaultColumnsSet, setDefaultColumnsSet] = React.useState(false)
   const [massResults, setMassResults] = React.useState([])
   const [filterText, setFilterText] = React.useState(defaultFilterText)
@@ -161,7 +163,7 @@ export default function CippTable({
     let tempColumns = actionsColumn ? columns.slice(0, -1) : [...columns]
 
     defaultColumnsArray.forEach((columnName) => {
-      if (!tempColumns.find((c) => c.exportSelector === columnName)) {
+      if (!tempColumns.find((c) => c.exportSelector === columnName && c?.omit !== true)) {
         tempColumns.push({
           name: columnName,
           selector: (row) => row[columnName],
@@ -202,7 +204,9 @@ export default function CippTable({
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const addColumn = (columnname) => {
-    let alreadyInArray = updatedColumns.some((o) => o.exportSelector === columnname)
+    let alreadyInArray = updatedColumns.some(
+      (o) => o.exportSelector === columnname && o?.omit !== true,
+    )
     let newColumns = [...updatedColumns]
     const actionsColumn = newColumns.length > 0 ? newColumns.pop() : null
 
@@ -332,14 +336,14 @@ export default function CippTable({
 
   const resetDropdown = () => {
     setUpdatedColumns(originalColumns)
-    setColumnDefaultLayout(reportName, null)
+    setColumnDefaultLayout(endpointName, null)
   }
   const dispatch = useDispatch()
   useEffect(() => {
     if (columns.length !== updatedColumns.length) {
       setUpdatedColumns(updatedColumns)
       setColumnDefaultLayout(
-        reportName,
+        endpointName,
         updatedColumns.map((column) => column.exportSelector).join(','),
       )
     }
@@ -349,7 +353,7 @@ export default function CippTable({
     dispatch,
     dynamicColumns,
     originalColumns,
-    reportName,
+    endpointName,
     setColumnDefaultLayout,
     updatedColumns,
   ])
@@ -709,9 +713,9 @@ export default function CippTable({
                   dataKeys().map((item, idx) => {
                     return (
                       <CDropdownItem key={idx} onClick={() => addColumn(item)}>
-                        {updatedColumns.find((o) => o.exportSelector === item) && (
-                          <FontAwesomeIcon icon={faCheck} />
-                        )}{' '}
+                        {updatedColumns.find(
+                          (o) => o.exportSelector === item && o?.omit !== true,
+                        ) && <FontAwesomeIcon icon={faCheck} />}{' '}
                         {item}
                       </CDropdownItem>
                     )
@@ -853,7 +857,8 @@ export default function CippTable({
     data,
     dynamicColumns,
     reportName,
-    originalColumns,
+    resetDropdown,
+    updatedColumns,
     addColumn,
     setGraphFilter,
   ])
