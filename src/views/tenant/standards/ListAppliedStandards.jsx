@@ -39,6 +39,7 @@ import { CippTable, cellBooleanFormatter } from 'src/components/tables'
 import allStandardsList from 'src/data/standards'
 import CippCodeOffCanvas from 'src/components/utilities/CippCodeOffcanvas'
 import GDAPRoles from 'src/data/GDAPRoles'
+import timezoneList from 'src/data/timezoneList'
 import Select from 'react-select'
 import { cellGenericFormatter } from 'src/components/tables/CellGenericFormat'
 
@@ -287,7 +288,7 @@ const ApplyNewStandard = () => {
     genericPostRequest({
       path: '/api/AddStandardsDeploy',
       values: { ...values.standards, tenant: tenantDomain },
-    })
+    }).then(() => refetchStandards())
   }
   const [intuneGetRequest, intuneTemplates] = useLazyGenericGetRequestQuery()
   const [transportGetRequest, transportTemplates] = useLazyGenericGetRequestQuery()
@@ -367,6 +368,66 @@ const ApplyNewStandard = () => {
                 {getResults.error.message}
               </CippCallout>
             )}
+            <CRow>
+              <CCol md={4}>
+                <CWidgetStatsB
+                  className="mb-3"
+                  progress={{
+                    color: 'info',
+                    value:
+                      totalAvailableStandards > 0
+                        ? Math.round((enabledWarningsCount / totalAvailableStandards) * 1000) / 10
+                        : 0,
+                  }}
+                  text={
+                    listStandardResults.length > 0 && listStandardResults[0].appliedBy
+                      ? `Created by ${listStandardResults[0].appliedBy}`
+                      : 'None'
+                  }
+                  title={`${enabledWarningsCount} out of ${totalAvailableStandards}`}
+                  value="Enabled Warnings"
+                />
+              </CCol>
+              <CCol md={4}>
+                <CWidgetStatsB
+                  className="mb-3"
+                  progress={{
+                    color: 'info',
+                    value:
+                      totalAvailableStandards > 0
+                        ? Math.round((enabledAlertsCount / totalAvailableStandards) * 1000) / 10
+                        : 0,
+                  }}
+                  text={
+                    listStandardResults.length > 0 && listStandardResults[0].appliedBy
+                      ? `Created by ${listStandardResults[0].appliedBy}`
+                      : 'None'
+                  }
+                  title={`${enabledAlertsCount} out of ${totalAvailableStandards}`}
+                  value="Enabled Alerts"
+                />
+              </CCol>
+              <CCol md={4}>
+                <CWidgetStatsB
+                  className="mb-3"
+                  progress={{
+                    color: 'info',
+                    value:
+                      totalAvailableStandards > 0
+                        ? Math.round((enabledRemediationsCount / totalAvailableStandards) * 1000) /
+                          10
+                        : 0,
+                  }}
+                  text={
+                    listStandardResults.length > 0 && listStandardResults[0].appliedBy
+                      ? `Created by ${listStandardResults[0].appliedBy}`
+                      : 'None'
+                  }
+                  title={`${enabledRemediationsCount} out of ${totalAvailableStandards}`}
+                  value="Enabled Remediations"
+                />
+              </CCol>
+            </CRow>
             <CippContentCard
               button={
                 <>
@@ -375,7 +436,7 @@ const ApplyNewStandard = () => {
               }
               title={`List and edit standard - ${tenantDomain}`}
             >
-              {isFetching && <Skeleton count={20} />}
+              {isFetching && <Skeleton count={1} />}
               {intuneTemplates.isUninitialized &&
                 intuneGetRequest({ path: 'api/ListIntuneTemplates' })}
               {transportTemplates.isUninitialized &&
@@ -399,69 +460,6 @@ const ApplyNewStandard = () => {
                     return (
                       <CForm onSubmit={handleSubmit}>
                         <CRow className="mb-3">
-                          <CCol md={4}>
-                            <CWidgetStatsB
-                              className="mb-3"
-                              progress={{
-                                color: 'info',
-                                value:
-                                  totalAvailableStandards > 0
-                                    ? Math.round(
-                                        (enabledWarningsCount / totalAvailableStandards) * 1000,
-                                      ) / 10
-                                    : 0,
-                              }}
-                              text={
-                                listStandardResults[0].appliedBy
-                                  ? `Created by ${listStandardResults[0].appliedBy}`
-                                  : 'None'
-                              }
-                              title={`${enabledWarningsCount} out of ${totalAvailableStandards}`}
-                              value="Enabled Warnings"
-                            />
-                          </CCol>
-                          <CCol md={4}>
-                            <CWidgetStatsB
-                              className="mb-3"
-                              progress={{
-                                color: 'info',
-                                value:
-                                  totalAvailableStandards > 0
-                                    ? Math.round(
-                                        (enabledAlertsCount / totalAvailableStandards) * 1000,
-                                      ) / 10
-                                    : 0,
-                              }}
-                              text={
-                                listStandardResults[0].appliedBy
-                                  ? `Created by ${listStandardResults[0].appliedBy}`
-                                  : 'None'
-                              }
-                              title={`${enabledAlertsCount} out of ${totalAvailableStandards}`}
-                              value="Enabled Alerts"
-                            />
-                          </CCol>
-                          <CCol md={4}>
-                            <CWidgetStatsB
-                              className="mb-3"
-                              progress={{
-                                color: 'info',
-                                value:
-                                  totalAvailableStandards > 0
-                                    ? Math.round(
-                                        (enabledRemediationsCount / totalAvailableStandards) * 1000,
-                                      ) / 10
-                                    : 0,
-                              }}
-                              text={
-                                listStandardResults[0].appliedBy
-                                  ? `Created by ${listStandardResults[0].appliedBy}`
-                                  : 'None'
-                              }
-                              title={`${enabledRemediationsCount} out of ${totalAvailableStandards}`}
-                              value="Enabled Remediations"
-                            />
-                          </CCol>
                           <CAccordion
                             alwaysOpen
                             activeItemKey={
@@ -630,6 +628,17 @@ const ApplyNewStandard = () => {
                                                   values={GDAPRoles.map((role) => ({
                                                     value: role.ObjectId,
                                                     name: role.Name,
+                                                  }))}
+                                                />
+                                              )}
+                                              {component.type === 'TimezoneSelect' && (
+                                                <RFFSelectSearch
+                                                  name={component.name}
+                                                  className="mb-3"
+                                                  label={component.label}
+                                                  values={timezoneList.map((tz) => ({
+                                                    value: tz.timezone,
+                                                    name: tz.timezone,
                                                   }))}
                                                 />
                                               )}

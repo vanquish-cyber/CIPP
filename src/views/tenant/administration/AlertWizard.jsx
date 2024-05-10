@@ -1,346 +1,462 @@
-import React from 'react'
-import { CCol, CRow, CForm, CListGroup, CListGroupItem, CCallout, CSpinner } from '@coreui/react'
-import { Field, FormSpy } from 'react-final-form'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCheck, faExclamationTriangle, faTimes } from '@fortawesome/free-solid-svg-icons'
-import { CippWizard } from 'src/components/layout'
-import { WizardTableField } from 'src/components/tables'
-import PropTypes from 'prop-types'
-import { Condition, RFFCFormSelect, RFFCFormSwitch, RFFSelectSearch } from 'src/components/forms'
+import React, { useEffect, useState } from 'react'
+import {
+  CBadge,
+  CButton,
+  CCallout,
+  CCard,
+  CCardBody,
+  CCardHeader,
+  CCardTitle,
+  CCol,
+  CForm,
+  CRow,
+  CSpinner,
+  CWidgetStatsA,
+} from '@coreui/react'
+import useQuery from 'src/hooks/useQuery'
+import { useDispatch, useSelector } from 'react-redux'
+import { Field, Form, FormSpy } from 'react-final-form'
+import { CippPage } from 'src/components/layout'
+import { TenantSelector, TenantSelectorMultiple } from 'src/components/utilities'
+import {
+  Condition,
+  RFFCFormInput,
+  RFFCFormRadio,
+  RFFCFormSwitch,
+  RFFSelectSearch,
+} from 'src/components/forms/RFFComponents'
+import { useListTenantQuery } from 'src/store/api/tenants'
 import { useLazyGenericPostRequestQuery } from 'src/store/api/app'
-import countryList from 'src/data/countryList.json'
-
-const Error = ({ name }) => (
-  <Field
-    name={name}
-    subscription={{ touched: true, error: true }}
-    render={({ meta: { touched, error } }) =>
-      touched && error ? (
-        <CCallout color="danger">
-          <FontAwesomeIcon icon={faExclamationTriangle} color="danger" />
-          {error}
-        </CCallout>
-      ) : null
-    }
-  />
-)
-
-Error.propTypes = {
-  name: PropTypes.string.isRequired,
-}
-
-const requiredArray = (value) => (value && value.length !== 0 ? undefined : 'Required')
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
+import CippButtonCard from 'src/components/contentcards/CippButtonCard'
+import alertList from 'src/data/alerts.json'
+import auditLogSchema from 'src/data/AuditLogSchema.json'
 
 const AlertWizard = () => {
+  const dispatch = useDispatch()
+  let query = useQuery()
+  const tenantDomain = useSelector((state) => state.app.currentTenant.defaultDomainName)
+  const customerId = query.get('customerId')
+  const [queryError, setQueryError] = useState(false)
   const [genericPostRequest, postResults] = useLazyGenericPostRequestQuery()
+  const [alertType, setAlertType] = useState(false)
+  const {
+    data: tenant = {},
+    isFetching,
+    error,
+    isSuccess,
+  } = useListTenantQuery(tenantDomain, customerId)
 
-  const handleSubmit = async (values) => {
-    Object.keys(values).filter(function (x) {
-      if (values[x] === null) {
-        delete values[x]
-      }
-      return null
-    })
-    values.selectedTenants.map(
-      (tenant) => (values[`Select_${tenant.defaultDomainName}`] = tenant.defaultDomainName),
+  const onSubmitScript = (values) => {
+    //get current time as startDate, to the closest 15 minutes in the future
+    const startDate = new Date()
+    startDate.setMinutes(startDate.getMinutes() + 15 - (startDate.getMinutes() % 15))
+    //unix time, minus a couple of seconds to ensure it runs after the current time
+    const unixTime = Math.floor(startDate.getTime() / 1000) - 45
+    const shippedValues = {
+      TenantFilter: tenantDomain,
+      Name: `${values.command.label} for ${tenantDomain}`,
+      Command: { value: `Get-CIPPAlert${values.command.value.name}` },
+      Parameters: { input: values.input },
+      ScheduledTime: unixTime,
+      Recurrence: values.Recurrence,
+      PostExecution: {
+        Webhook: values.webhook,
+        Email: values.email,
+        PSA: values.psa,
+      },
+    }
+    genericPostRequest({ path: '/api/AddScheduledItem?hidden=true', values: shippedValues }).then(
+      (res) => {},
     )
-    genericPostRequest({ path: '/api/AddAlert', values: values })
   }
 
-  const formValues = {}
+  const initialValues = {
+    ...tenant[0],
+  }
+
+  const recurrenceOptions = [
+    { value: '30m', name: 'Every 30 minutes' },
+    { value: '1h', name: 'Every hour' },
+    { value: '4h', name: 'Every 4 hours' },
+    { value: '1d', name: 'Every 1 day' },
+    { value: '7d', name: 'Every 7 days' },
+    { value: '30d', name: 'Every 30 days' },
+    { value: '365d', name: 'Every 365 days' },
+  ]
+
+  const presetValues = [
+    { value: 'New-InboxRule', name: 'A new Inbox rule is created' },
+    {
+      value: 'New-InboxRule',
+      name: 'A new Inbox rule is created that forwards e-mails to the RSS feeds folder',
+    },
+
+    { value: 'Set-InboxRule', name: 'A existing Inbox rule is edited' },
+    {
+      value: 'Set-InboxRule',
+      name: 'A existing Inbox rule is edited that forwards e-mails to the RSS feeds folder',
+    },
+
+    {
+      value: 'Add member to role.',
+      name: 'A user has been added to an admin role',
+    },
+    {
+      value: 'Add User.',
+      name: 'A user account was created',
+    },
+    {
+      value: 'Disable account.',
+      name: 'A user account has been disabled',
+    },
+    {
+      value: 'Enable account.',
+      name: 'A user account has been enabled',
+    },
+    {
+      value: 'Update StsRefreshTokenValidFrom Timestamp.',
+      name: 'A user sessions have been revoked',
+    },
+    {
+      value: 'Disable Strong Authentication.',
+      name: 'A users MFA has been disabled',
+    },
+    {
+      value: 'Remove Member from a role.',
+      name: 'A user has been removed from a role',
+    },
+    {
+      value: 'Reset user password.',
+      name: 'A user password has been reset',
+    },
+    {
+      value: 'UserLoggedInFromUnknownLocation',
+      name: 'A user has logged in from a location not in the allowed locations list',
+    },
+    {
+      value: 'Add service principal.',
+      name: 'A service principal has been created',
+    },
+    {
+      value: 'Remove service principal.',
+      name: 'A service principal has been removed',
+    },
+    {
+      value: 'badRepIP',
+      name: 'A user has logged in a using a known VPN, Proxy, Or anonymizer',
+    },
+    {
+      value: 'HostedIP',
+      name: 'A user has logged in a using a known hosting provider IP',
+    },
+  ]
+
+  const getAuditLogSchema = (logbook) => {
+    const common = auditLogSchema.Common
+    const log = auditLogSchema[logbook]
+    const combined = { ...common, ...log }
+    return Object.keys(combined).map((key) => ({
+      name: key,
+      value: combined[key],
+    }))
+  }
+  const [addedEvent, setAddedEvent] = React.useState(1)
 
   return (
-    <CippWizard
-      initialValues={{ ...formValues }}
-      onSubmit={handleSubmit}
-      wizardTitle="Tenant Alerting Wizard"
-    >
-      <CippWizard.Page title="Tenant Choice" description="Choose the tenants to send alerts for">
-        <center>
-          <h3 className="text-primary">Step 1</h3>
-          <h5 className="card-title mb-4">Choose a tenant</h5>
-        </center>
-        <hr className="my-4" />
-        <Field name="selectedTenants" validate={requiredArray}>
-          {(props) => (
-            <WizardTableField
-              reportName="Add-Choco-App-Tenant-Selector"
-              keyField="defaultDomainName"
-              path="/api/ListTenants?AllTenantSelector=true"
-              columns={[
-                {
-                  name: 'Display Name',
-                  selector: (row) => row['displayName'],
-                  sortable: true,
-                  exportselector: 'displayName',
-                },
-                {
-                  name: 'Default Domain Name',
-                  selector: (row) => row['defaultDomainName'],
-                  sortable: true,
-                  exportselector: 'mail',
-                },
-              ]}
-              fieldProps={props}
-            />
-          )}
-        </Field>
-        <Error name="selectedTenants" />
-        <hr className="my-4" />
-      </CippWizard.Page>
-      <CippWizard.Page title="Select Alerts" description="Select which alerts you want to receive.">
-        <center>
-          <h3 className="text-primary">Step 2</h3>
-          <h5 className="card-title mb-4">Select Legacy Alerts to receive</h5>
-        </center>
-        <hr className="my-4" />
-        <CForm onSubmit={handleSubmit}>
-          <p>
-            Alerts setup on this page are considered legacy. These alerts run every 15 minutes and
-            do not use our advanced alerting engine.
-          </p>
-          <RFFCFormSwitch
-            value={true}
-            name="SetAlerts"
-            label="Setup alerts for the selected tenants"
-          />
-          <CRow>
-            <Condition when="SetAlerts" is={true}>
-              <hr />
-              <CCol>
-                <RFFCFormSwitch
-                  value={true}
-                  name="MFAAlertUsers"
-                  label="Alert on users without any form of MFA"
-                />
-                <RFFCFormSwitch name="MFAAdmins" label="Alert on admins without any form of MFA" />
-                <RFFCFormSwitch
-                  name="NoCAConfig"
-                  label="Alert on tenants without a Conditional Access policy, while having Conditional Access licensing available."
-                />
-                <RFFCFormSwitch name="AdminPassword" label="Alert on changed admin Passwords" />
-                <RFFCFormSwitch name="QuotaUsed" label="Alert on 90% mailbox quota used" />
-                <RFFCFormSwitch name="SharePointQuota" label="Alert on 90% SharePoint quota used" />
-
-                <RFFCFormSwitch
-                  name="ExpiringLicenses"
-                  label="Alert on licenses expiring in 30 days"
-                />
-                <RFFCFormSwitch
-                  name="SecDefaultsUpsell"
-                  label="Alert on Security Defaults automatic enablement"
-                />
-              </CCol>
-              <CCol>
-                <RFFCFormSwitch
-                  name="DefenderStatus"
-                  label="Alert if Defender is not running (Tenant must be on-boarded in Lighthouse)"
-                />
-                <RFFCFormSwitch
-                  name="DefenderMalware"
-                  label="Alert on Defender Malware found  (Tenant must be on-boarded in Lighthouse)"
-                />
-                <RFFCFormSwitch name="UnusedLicenses" label="Alert on unused licenses" />
-                <RFFCFormSwitch name="OverusedLicenses" label="Alert on overused licenses" />
-                <RFFCFormSwitch
-                  name="AppSecretExpiry"
-                  label="Alert on expiring application secrets"
-                />
-                <RFFCFormSwitch name="ApnCertExpiry" label="Alert on expiring APN certificates" />
-                <RFFCFormSwitch name="VppTokenExpiry" label="Alert on expiring VPP tokens" />
-                <RFFCFormSwitch name="DepTokenExpiry" label="Alert on expiring DEP tokens" />
-              </CCol>
-            </Condition>
-          </CRow>
-        </CForm>
-
-        <hr className="my-4" />
-      </CippWizard.Page>
-      <CippWizard.Page
-        title="Select Webhook Alerts"
-        description="Select which alerts you want to receive."
-      >
-        <center>
-          <h3 className="text-primary">Step 3</h3>
-          <h5 className="card-title mb-4">Select webhook alerts</h5>
-        </center>
-        <hr className="my-4" />
-        <CForm onSubmit={handleSubmit}>
-          <p>
-            This setting will subscribe CIPP to receive the audit logs from this tenant directly.
-            You can then use the Alert Rules page to create alerts or take actions based on these
-            logs.
-          </p>
-          <CRow>
-            <CCol>
-              <RFFCFormSwitch
-                name="AuditLogEnable"
-                label="Subscribe this tenant to receive audit logs within CIPP"
-              />
+    <CippPage title="Tenant Details" tenantSelector={false}>
+      {!queryError && (
+        <>
+          <CRow className="mb-3">
+            <CCol md={3}>
+              <CippButtonCard
+                title="Audit Log Alert"
+                CardButton={<CButton onClick={() => setAlertType('audit')}>Select</CButton>}
+              >
+                Select this option if you'd like to create an alert based on a received Microsoft
+                Audit log.
+              </CippButtonCard>
+            </CCol>
+            <CCol md={3}>
+              <CippButtonCard
+                title="Scripted CIPP Alert"
+                CardButton={<CButton onClick={() => setAlertType('script')}>Select</CButton>}
+              >
+                Select this option if you'd like to setup an alert based on data processed by CIPP
+              </CippButtonCard>
             </CCol>
           </CRow>
-        </CForm>
-        <hr className="my-4" />
-      </CippWizard.Page>
-      <CippWizard.Page title="Review and Confirm" description="Confirm the settings to apply">
-        <center>
-          <h3 className="text-primary">Step 3</h3>
-          <h5 className="card-title mb-4">Confirm and apply</h5>
-        </center>
-        <hr className="my-4" />
-        {!postResults.isSuccess && (
-          <FormSpy>
-            {/* eslint-disable react/prop-types */}
-            {(props) => {
-              return (
-                <>
-                  <CRow>
-                    <CCol md={3}></CCol>
-                    <CCol md={6}>
-                      <CListGroup flush>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on users without any form of MFA
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.MFAAlertUsers ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on admins without any form of MFA
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.MFAAdmins ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on new users added to any admin role
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.NewRole ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on changed admin Passwords
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.AdminPassword ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert if Defender is not running
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.DefenderStatus ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on Defender Malware
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.DefenderMalware ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on 90% mailbox quota used
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.QuotaUsed ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on unused licenses
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.UnusedLicenses ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on overused licenses
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.OverusedLicenses ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on expiring application secrets
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.AppSecretExpiry ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on expiring APN certificates
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.ApnCertExpiry ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on expiring VPP tokens
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.VppTokenExpiry ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on expiring DEP tokens
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.DepTokenExpiry ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on no CA policies
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.NoCAConfig ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                        <CListGroupItem className="d-flex justify-content-between align-items-center">
-                          Alert on Security Defaults automatic enablement
-                          <FontAwesomeIcon
-                            color="#f77f00"
-                            size="lg"
-                            icon={props.values.SecDefaultsUpsell ? faCheck : faTimes}
-                          />
-                        </CListGroupItem>
-                      </CListGroup>
-                    </CCol>
-                  </CRow>
-                </>
-              )
-            }}
-          </FormSpy>
-        )}
-        {postResults.isFetching && (
-          <CCallout color="info">
-            <CSpinner>Loading</CSpinner>
-          </CCallout>
-        )}
-        {postResults.isSuccess && (
-          <CCallout color="success">
-            {postResults.data.Results.map((message, idx) => {
-              return <li key={idx}>{message}</li>
-            })}
-          </CCallout>
-        )}
-        <hr className="my-4" />
-      </CippWizard.Page>
-    </CippWizard>
+          {alertType === 'audit' && (
+            <>
+              <CRow className="mb-3">
+                <CCol md={8}>
+                  <CippButtonCard title="Tenant Selector" titleType="big">
+                    Select the tenants you want to include in this Alert.
+                    <TenantSelectorMultiple />
+                  </CippButtonCard>
+                </CCol>
+              </CRow>
+              <Form
+                onSubmit={onSubmitScript}
+                initialValues={{ ...initialValues }}
+                render={({ handleSubmit, submitting, values }) => {
+                  return (
+                    <CForm id="auditAlertForm" onSubmit={handleSubmit}>
+                      <CRow className="mb-3">
+                        <CCol md={8}>
+                          <CippButtonCard
+                            title="Alert Criteria"
+                            titleType="big"
+                            CardButton={
+                              <CButton type="submit" form="auditAlertForm">
+                                Save Alert
+                              </CButton>
+                            }
+                          >
+                            <CRow className="mb-3">
+                              <CCol>
+                                <RFFSelectSearch
+                                  values={presetValues}
+                                  name="command"
+                                  placeholder={'Select a preset'}
+                                  label="Select an alert preset, or customize your own"
+                                />
+                              </CCol>
+                            </CRow>
+                            <CRow className="mb-3">
+                              <CCol>
+                                <RFFSelectSearch
+                                  values={[
+                                    { value: 'Audit.AzureActiveDirectory', name: 'Azure AD' },
+                                    { value: 'Audit.Exchange', name: 'Exchange' },
+                                  ]}
+                                  name="logbook"
+                                  placeholder={'Select a log source'}
+                                  label="Select the log you which to receive the alert for"
+                                />
+                              </CCol>
+                            </CRow>
+                            {addedEvent > 0 &&
+                              [...Array(addedEvent)].map((e, i) => (
+                                <CRow key={i} className="mb-3">
+                                  <CRow>
+                                    <CCol className="mb-3">
+                                      <CBadge color="info">AND</CBadge>
+                                    </CCol>
+                                  </CRow>
+                                  <CCol>
+                                    <FormSpy>
+                                      {(props) => {
+                                        return (
+                                          <RFFSelectSearch
+                                            values={getAuditLogSchema(props.values?.logbook?.value)}
+                                            name={`conditions.${i}.property`}
+                                            placeholder={'Select a property to alert on'}
+                                            label="When property"
+                                          />
+                                        )
+                                      }}
+                                    </FormSpy>
+                                  </CCol>
+                                  <CCol>
+                                    <RFFSelectSearch
+                                      values={[
+                                        { value: 'eq', name: 'Equals' },
+                                        { value: 'like', name: 'Like' },
+                                        { value: 'ne', name: 'Not Equals' },
+                                        { value: 'notmatch', name: 'Does not match' },
+                                        { value: 'gt', name: 'Greater than' },
+                                        { value: 'lt', name: 'Less than' },
+                                        { value: 'in', name: 'In' },
+                                        { value: 'notIn', name: 'Not In' },
+                                      ]}
+                                      name={`conditions.${i}.Operator`}
+                                      placeholder={'Select a command'}
+                                      label="is"
+                                    />
+                                  </CCol>
+                                  <CCol>
+                                    <FormSpy>
+                                      {(props) => {
+                                        return (
+                                          <>
+                                            {props.values?.conditions?.[i]?.property?.value ===
+                                              'String' && (
+                                              <RFFCFormInput
+                                                name={`conditions.${i}.Input`}
+                                                placeholder={'Select a command'}
+                                                label={`Input`}
+                                              />
+                                            )}
+                                            {props.values?.conditions?.[
+                                              i
+                                            ]?.property?.value.startsWith('List:') && (
+                                              <RFFSelectSearch
+                                                values={
+                                                  auditLogSchema[
+                                                    props.values?.conditions?.[i]?.property?.value
+                                                  ]
+                                                }
+                                                name={`conditions.${i}.Input`}
+                                                placeholder={'Select an input from the list'}
+                                                label="Input"
+                                              />
+                                            )}
+                                          </>
+                                        )
+                                      }}
+                                    </FormSpy>
+                                  </CCol>
+                                </CRow>
+                              ))}
+                            <CRow>
+                              <CCol className="mb-3" md={12}>
+                                {addedEvent > 0 && (
+                                  <CButton
+                                    onClick={() => setAddedEvent(addedEvent - 1)}
+                                    className={`circular-button`}
+                                    title={'-'}
+                                  >
+                                    <FontAwesomeIcon icon={'minus'} />
+                                  </CButton>
+                                )}
+                                {addedEvent < 4 && (
+                                  <CButton
+                                    onClick={() => setAddedEvent(addedEvent + 1)}
+                                    className={`circular-button`}
+                                    title={'+'}
+                                  >
+                                    <FontAwesomeIcon icon={'plus'} />
+                                  </CButton>
+                                )}
+                              </CCol>
+                            </CRow>
+                          </CippButtonCard>
+                        </CCol>
+                      </CRow>
+                    </CForm>
+                  )
+                }}
+              />
+            </>
+          )}
+          {alertType === 'script' && (
+            <>
+              <CRow className="mb-3">
+                <CCol md={8}>
+                  <CippButtonCard title="Tenant Selector" titleType="big">
+                    <p className="mb-3">Select the tenants you want to include in this Alert.</p>
+                    <TenantSelector />
+                  </CippButtonCard>
+                </CCol>
+              </CRow>
+              <CRow className="mb-3">
+                <CCol md={8}>
+                  <CippButtonCard
+                    title="Alert Criteria"
+                    titleType="big"
+                    CardButton={
+                      <CButton type="submit" form="alertForm">
+                        Save Alert
+                        {postResults.isFetching && (
+                          <FontAwesomeIcon icon={faCircleNotch} spin className="ms-2" size="1x" />
+                        )}
+                      </CButton>
+                    }
+                  >
+                    <Form
+                      onSubmit={onSubmitScript}
+                      initialValues={{ ...initialValues }}
+                      render={({ handleSubmit, submitting, values }) => {
+                        return (
+                          <CForm id="alertForm" onSubmit={handleSubmit}>
+                            <CRow className="mb-3">
+                              <CCol>
+                                <RFFSelectSearch
+                                  values={alertList.map((cmd) => ({
+                                    value: cmd,
+                                    name: cmd.label,
+                                  }))}
+                                  name="command"
+                                  placeholder={'Select a command'}
+                                  label="What alerting script should run"
+                                />
+                              </CCol>
+                            </CRow>
+                            <Condition when="command.value.requiresInput" is={true}>
+                              <CRow className="mb-3">
+                                <CCol>
+                                  <FormSpy>
+                                    {(props) => {
+                                      return (
+                                        <RFFCFormInput
+                                          type="text"
+                                          name="input"
+                                          label={props.values.command.value.inputLabel}
+                                          placeholder="Enter a value"
+                                        />
+                                      )
+                                    }}
+                                  </FormSpy>
+                                </CCol>
+                              </CRow>
+                            </Condition>
+                            <CRow className="mb-3">
+                              <CCol>
+                                <FormSpy>
+                                  {(props) => {
+                                    const updatedRecurrenceOptions = recurrenceOptions.map(
+                                      (opt) => ({
+                                        ...opt,
+                                        name: opt.name.replace(' (Recommended)', ''),
+                                      }),
+                                    )
+                                    const recommendedValue =
+                                      props.values.command?.value?.recommendedRunInterval
+                                    const option = updatedRecurrenceOptions.find(
+                                      (opt) => opt.value === recommendedValue,
+                                    )
+                                    if (option) {
+                                      option.name += ' (Recommended)'
+                                    }
+                                    return (
+                                      <RFFSelectSearch
+                                        values={updatedRecurrenceOptions}
+                                        name="Recurrence"
+                                        placeholder="Select when this alert should run"
+                                        label="When should the alert run"
+                                      />
+                                    )
+                                  }}
+                                </FormSpy>
+                              </CCol>
+                            </CRow>
+                            <CRow className="mb-3">
+                              <CCol>
+                                <label>Receive Alert via: </label>
+                                <RFFCFormSwitch name="webhook" label="Webhook" />
+                                <RFFCFormSwitch name="email" label="E-mail" />
+                                <RFFCFormSwitch name="psa" label="PSA" />
+                              </CCol>
+                            </CRow>
+                            {postResults.isSuccess && (
+                              <CCallout color="success">
+                                <li>{postResults.data.Results}</li>
+                              </CCallout>
+                            )}
+                          </CForm>
+                        )
+                      }}
+                    />
+                  </CippButtonCard>
+                </CCol>
+              </CRow>
+            </>
+          )}
+        </>
+      )}
+    </CippPage>
   )
 }
 
