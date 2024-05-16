@@ -129,13 +129,8 @@ const _nav = [
       },
       {
         component: CNavItem,
-        name: 'Alerts (Classic)',
+        name: 'Alerts',
         to: '/tenant/administration/alertsqueue',
-      },
-      {
-        component: CNavItem,
-        name: 'Alert Rules',
-        to: '/tenant/administration/AlertRules',
       },
       {
         component: CNavItem,
@@ -155,7 +150,7 @@ const _nav = [
       {
         component: CNavItem,
         name: 'Tenant Onboarding',
-        to: '/tenant/administration/tenant-onboarding-wizard',
+        to: '/tenant/administration/tenant-onboarding',
       },
       {
         component: CNavItem,
