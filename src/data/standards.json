@@ -122,6 +122,16 @@
     "impactColour": "info"
   },
   {
+    "name": "standards.EnablePronouns",
+    "cat": "Global Standards",
+    "tag": ["lowimpact"],
+    "helpText": "Enables the Pronouns feature for the tenant. This allows users to set their pronouns in their profile.",
+    "addedComponent": [],
+    "label": "Enable Pronouns",
+    "impact": "Low Impact",
+    "impactColour": "info"
+  },
+  {
     "name": "standards.AnonReportDisable",
     "cat": "Global Standards",
     "tag": ["lowimpact"],
@@ -1104,6 +1114,44 @@
       },
       {
         "type": "Select",
+        "label": "If a message is detected as user impersonation",
+        "name": "standards.AntiPhishPolicy.TargetedUserProtectionAction",
+        "values": [
+          {
+            "label": "Move to Junk Folder",
+            "value": "MoveToJmf"
+          },
+          {
+            "label": "Delete the message before its delivered",
+            "value": "Delete"
+          },
+          {
+            "label": "Quarantine the message",
+            "value": "Quarantine"
+          }
+        ]
+      },
+      {
+        "type": "Select",
+        "label": "If a message is detected as domain impersonation",
+        "name": "standards.AntiPhishPolicy.TargetedDomainProtectionAction",
+        "values": [
+          {
+            "label": "Move to Junk Folder",
+            "value": "MoveToJmf"
+          },
+          {
+            "label": "Delete the message before its delivered",
+            "value": "Delete"
+          },
+          {
+            "label": "Quarantine the message",
+            "value": "Quarantine"
+          }
+        ]
+      },
+      {
+        "type": "Select",
         "label": "If Mailbox Intelligence detects an impersonated user",
         "name": "standards.AntiPhishPolicy.MailboxIntelligenceProtectionAction",
         "values": [
@@ -1279,7 +1327,7 @@
       },
       {
         "type": "boolean",
-        "label": "Enable Internal Sender Admin Notifications",
+        "label": "Enable External Sender Admin Notifications",
         "name": "standards.MalwareFilterPolicy.EnableExternalSenderAdminNotifications"
       },
       {
